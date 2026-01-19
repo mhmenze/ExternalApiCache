@@ -21,17 +21,16 @@ public class ExternalApiService
             HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
 
             string jsonData = await response.Content.ReadAsStringAsync();
-            var result = MapResultToCharacterModel(jsonData);
+            var result = MapApiResultToCharacterModel(jsonData);
             return result;
         }
         catch (Exception)
         {
-
             throw;
         }
     }
 
-    public Character MapResultToCharacterModel(string jsonData)
+    public Character MapApiResultToCharacterModel(string jsonData)
     {
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 

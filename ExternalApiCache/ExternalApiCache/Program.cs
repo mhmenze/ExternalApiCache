@@ -15,6 +15,7 @@ public class Program
         {
             client.BaseAddress = new Uri(baseUrl!);
         });
+        builder.Services.AddScoped<LocalCacheService>();
 
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

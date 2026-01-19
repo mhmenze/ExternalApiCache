@@ -22,15 +22,15 @@ CREATE TABLE [RM].[Location] (
 GO
 
 CREATE TABLE [RM].[Character] (
-    [Id] BIGINT IDENTITY PRIMARY KEY,
+    [Id] BIGINT PRIMARY KEY,
     [Name] NVARCHAR(255) NOT NULL,
     [Status] NVARCHAR(50),
     [Species] NVARCHAR(100),
     [Type] NVARCHAR(100),
     [Gender] NVARCHAR(50),
     [Image] NVARCHAR(2048),
-    [CharacterUrl] NVARCHAR(2048),
-    [CreatedOn] NVARCHAR(100),    
+    [Url] NVARCHAR(2048),
+    [Created] NVARCHAR(100),    
     [OriginId] BIGINT,
     [LocationId] BIGINT,
 
