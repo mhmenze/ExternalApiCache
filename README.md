@@ -20,16 +20,20 @@ Based on the **ASP.NET Core WebAPI template**.
   - **GetCharacterById** - Caching Implemented. If ID not in DB, it will be fetched by API and saved to DB, then displayed.
   - **GetAllCharacters** - Caching not Implemented. Fetches all records from DB (not external API).
 
-**Reason for not using Caching to GetAllCharacters:**
-*Made an assumption that the requested API to get a list of records
-means get all records. If all records are taken and saved in DB once, then after that external API wont be called.
-This creates a copy of the entire API data in the local DB, which is unnecessary for this requirement.
 
-Other option to get multiple records is to get paginated data from the API, but then need to verify if 
-specific IDs in the page are in the DB or not, and that exceeds the 3hour scope of this task.
+### Reason for not implementing caching in GetAllCharacters:
 
-Considered the option where user passes a list of Ids to get a list of records, but went with GetAll since
-this option is very similar to getting one record by Id, and DB caching for that is already implemented*
+Made an assumption that "get a list of records" means get all records. 
+
+**Options considered:**
+
+1. **Get All with caching** - If all records are fetched and saved to DB once, the external API wont be called again. This creates a copy of the API data in the DB, which is not what we want.
+
+2. **Paginated results with caching** - Need to check which specific IDs on each page exist in the DB and fetching only missing ones. Ignored this as this is too complex for the 3 hour task.
+
+3. **Get multiple by IDs** - User passes multiple Ids to the API. As it is very similar to the existing GetById, skipped this.
+
+**Decision:** Implemented GetAll to return DB cached records only.
 
 ## Frontend
 - Did not use any frontend framework/UI.
@@ -50,10 +54,10 @@ this option is very similar to getting one record by Id, and DB caching for that
 ## Step 1 - Create an MS SQL Server Instance
 
 ## Step 2 - Execute the CreationQueries.sql
-Run the script located at "ExternalApiCache\SQL\CreationQueries.sql" to create the DB, schema and tables.
+Run the script located at "repo\SQL\CreationQueries.sql" to create the DB, schema and tables.
 
 ## Step 3 - Execute the StoredProcedures.sql
-Run the script located at "ExternalApiCache\SQL\StoredProcedures.sql" to create all stored procedures.
+Run the script located at "repo\SQL\StoredProcedures.sql" to create all stored procedures.
 
 ## Step 4 - Configure appsettings.json
 Add your connection string to appsettings.json like shown in below example:
