@@ -14,6 +14,92 @@ public class LocalCacheService
             ?? throw new Exception("Connection string not found");
     }
 
+    public async Task<Character?> GetCharacterFromLocalDbById(long characterId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        using var command = new SqlCommand("RM.GetCharacterById", connection);
+        command.CommandType = CommandType.StoredProcedure;
+        command.Parameters.AddWithValue("@Id", characterId);
+
+        await connection.OpenAsync();
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+            return null;
+
+        var character = MapCharacterFromReader(reader);
+        reader.Close();
+
+        character.Episode = await GetEpisodesForCharacter(characterId, connection);
+        return character;
+    }
+
+    public async Task<List<Character>> GetAllCharactersFromlocalDb()
+    {
+        var characters = new List<Character>();
+        using var connection = new SqlConnection(_connectionString);
+        using var command = new SqlCommand("RM.GetAllCharacters", connection);
+        command.CommandType = CommandType.StoredProcedure;
+
+        await connection.OpenAsync();
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            characters.Add(MapCharacterFromReader(reader));
+        }
+        reader.Close();
+        foreach (var character in characters)
+        {
+            character.Episode = await GetEpisodesForCharacter(character.Id, connection);
+        }
+
+        return characters;
+    }
+
+    private Character MapCharacterFromReader(SqlDataReader reader)
+    {
+        return new Character
+        {
+            Id = Convert.ToInt64(reader["Id"]),
+            Name = reader["Name"]?.ToString() ?? "",
+            Status = reader["Status"]?.ToString() ?? "",
+            Species = reader["Species"]?.ToString() ?? "",
+            Type = reader["Type"]?.ToString() ?? "",
+            Gender = reader["Gender"]?.ToString() ?? "",
+            Image = reader["Image"]?.ToString() ?? "",
+            Url = reader["Url"]?.ToString() ?? "",
+            Created = reader["Created"]?.ToString() ?? "",
+            Origin = new CharacterOrigin
+            {
+                Name = reader["OriginName"]?.ToString() ?? "",
+                Url = reader["OriginUrl"]?.ToString() ?? ""
+            },
+            Location = new CharacterLocation
+            {
+                Name = reader["LocationName"]?.ToString() ?? "",
+                Url = reader["LocationUrl"]?.ToString() ?? ""
+            }
+        };
+    }
+
+    private async Task<List<string>> GetEpisodesForCharacter(long characterId, SqlConnection connection)
+    {
+        var episodes = new List<string>();
+
+        using var command = new SqlCommand("RM.GetEpisodesByCharacterId", connection);
+        command.Parameters.AddWithValue("@CharacterId", characterId);
+        command.CommandType = CommandType.StoredProcedure;
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            episodes.Add(reader.GetString(0));
+        }
+
+        return episodes;
+    }
+
     public async Task InsertCharacterToDb(Character character)
     {
         using var connection = new SqlConnection(_connectionString);
@@ -23,59 +109,60 @@ public class LocalCacheService
 
         try
         {
-            var originCmd = new SqlCommand(
-                @"IF NOT EXISTS (SELECT 1 FROM RM.Origin WHERE Url = @url)
-              INSERT INTO RM.Origin (Name, Url) VALUES (@name, @url);
-              SELECT OriginId FROM RM.Origin WHERE Url = @url;",
-                connection, transaction);
+            var originCmd = new SqlCommand("RM.GetOrInsertOrigin", connection, transaction);
+            originCmd.CommandType = CommandType.StoredProcedure;
 
-            originCmd.Parameters.Add("@name", SqlDbType.NVarChar, 255).Value = character.Origin.Name;
-            originCmd.Parameters.Add("@url", SqlDbType.NVarChar, 2048).Value = character.Origin.Url;
+            originCmd.Parameters.AddWithValue("@name", character.Origin.Name);
+            originCmd.Parameters.AddWithValue("@url", character.Origin.Url);
 
-            long originId = (long)await originCmd.ExecuteScalarAsync();
+            var originIdParam = new SqlParameter("@OriginId", SqlDbType.BigInt)
+            {
+                Direction = ParameterDirection.Output
+            };
+            originCmd.Parameters.Add(originIdParam);
+            await originCmd.ExecuteNonQueryAsync();
 
-            var locationCmd = new SqlCommand(
-                @"IF NOT EXISTS (SELECT 1 FROM RM.Location WHERE Url = @url)
-              INSERT INTO RM.Location (Name, Url) VALUES (@name, @url);
-              SELECT LocationId FROM RM.Location WHERE Url = @url;",
-                connection, transaction);
+            long originId = (long)originIdParam.Value;
 
-            locationCmd.Parameters.Add("@name", SqlDbType.NVarChar, 255).Value = character.Location.Name;
-            locationCmd.Parameters.Add("@url", SqlDbType.NVarChar, 2048).Value = character.Location.Url;
+            var locationCmd = new SqlCommand("RM.GetOrInsertLocation", connection, transaction);
+            locationCmd.CommandType = CommandType.StoredProcedure;
 
-            long locationId = (long)await locationCmd.ExecuteScalarAsync();
+            locationCmd.Parameters.AddWithValue("@name", character.Location.Name);
+            locationCmd.Parameters.AddWithValue("@url", character.Location.Url);
 
-            var characterCmd = new SqlCommand(
-                @"IF NOT EXISTS (SELECT 1 FROM RM.Character WHERE Id = @id)
-              INSERT INTO RM.Character
-              (Id, Name, Status, Species, Type, Gender, Image, Url, Created, OriginId, LocationId)
-              VALUES (@id, @name, @status, @species, @type, @gender, @image, @url, @created, @originId, @locationId);",
-                connection, transaction);
+            var locationIdParam = new SqlParameter("@LocationId", SqlDbType.BigInt)
+            {
+                Direction = ParameterDirection.Output
+            };
+            locationCmd.Parameters.Add(locationIdParam);
+            await locationCmd.ExecuteNonQueryAsync();
 
-            characterCmd.Parameters.Add("@id", SqlDbType.BigInt).Value = character.Id;
-            characterCmd.Parameters.Add("@name", SqlDbType.NVarChar, 255).Value = character.Name;
-            characterCmd.Parameters.Add("@status", SqlDbType.NVarChar, 50).Value = character.Status;
-            characterCmd.Parameters.Add("@species", SqlDbType.NVarChar, 100).Value = character.Species;
-            characterCmd.Parameters.Add("@type", SqlDbType.NVarChar, 100).Value = character.Type;
-            characterCmd.Parameters.Add("@gender", SqlDbType.NVarChar, 50).Value = character.Gender;
-            characterCmd.Parameters.Add("@image", SqlDbType.NVarChar, 2048).Value = character.Image;
-            characterCmd.Parameters.Add("@url", SqlDbType.NVarChar, 2048).Value = character.Url;
-            characterCmd.Parameters.Add("@created", SqlDbType.NVarChar, 100).Value = character.Created;
-            characterCmd.Parameters.Add("@originId", SqlDbType.BigInt).Value = originId;
-            characterCmd.Parameters.Add("@locationId", SqlDbType.BigInt).Value = locationId;
+            long locationId = (long)locationIdParam.Value;
+
+            var characterCmd = new SqlCommand("RM.InsertCharacter", connection, transaction);
+            characterCmd.CommandType = CommandType.StoredProcedure;
+
+            characterCmd.Parameters.AddWithValue("@name", character.Name);
+            characterCmd.Parameters.AddWithValue("@status", character.Status);
+            characterCmd.Parameters.AddWithValue("@id", character.Id);
+            characterCmd.Parameters.AddWithValue("@species", character.Species);
+            characterCmd.Parameters.AddWithValue("@type", character.Type);
+            characterCmd.Parameters.AddWithValue("@gender", character.Gender);
+            characterCmd.Parameters.AddWithValue("@image", character.Image);
+            characterCmd.Parameters.AddWithValue("@url", character.Url);
+            characterCmd.Parameters.AddWithValue("@created", character.Created);
+            characterCmd.Parameters.AddWithValue("@originId", originId);
+            characterCmd.Parameters.AddWithValue("@locationId", locationId);
 
             await characterCmd.ExecuteNonQueryAsync();
 
             foreach (var ep in character.Episode)
             {
-                var epCmd = new SqlCommand(
-                    @"IF NOT EXISTS (SELECT 1 FROM RM.CharacterEpisode WHERE CharacterId = @cid AND EpisodeUrl = @url)
-                  INSERT INTO RM.CharacterEpisode (CharacterId, EpisodeUrl)
-                  VALUES (@cid, @url);",
-                    connection, transaction);
+                var epCmd = new SqlCommand("RM.InsertCharacterEpisode", connection, transaction);
+                epCmd.CommandType = CommandType.StoredProcedure;
 
-                epCmd.Parameters.Add("@cid", SqlDbType.BigInt).Value = character.Id;
-                epCmd.Parameters.Add("@url", SqlDbType.NVarChar, 2048).Value = ep;
+                epCmd.Parameters.AddWithValue("@cid", character.Id);
+                epCmd.Parameters.AddWithValue("@url", ep);
 
                 await epCmd.ExecuteNonQueryAsync();
             }

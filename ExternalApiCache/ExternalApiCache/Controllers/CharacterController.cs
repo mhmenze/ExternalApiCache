@@ -22,13 +22,25 @@ public class CharacterController : ControllerBase
         _localService = localService;
     }
 
-    [HttpGet(Name = "GetCharacterById")]
+    [HttpGet("{characterId}", Name = "GetCharacterById")]
     public async Task<ActionResult<Character>> GetCharacterById(long characterId)
     {
+        var dbResult = await _localService.GetCharacterFromLocalDbById(characterId);
+
+        if (dbResult != null)
+            return Ok(dbResult);
+
         var apiResult = await _apiService.FetchCharacterById(characterId);
 
         await _localService.InsertCharacterToDb(apiResult);
 
         return Ok(apiResult);
+    }
+
+    [HttpGet("all", Name = "GetAllCharacters")]
+    public async Task<ActionResult<IEnumerable<Character>>> GetAllCharacters()
+    {
+        var results = await _localService.GetAllCharactersFromlocalDb();
+        return Ok(results);
     }
 }

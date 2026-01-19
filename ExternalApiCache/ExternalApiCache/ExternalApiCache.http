@@ -1,6 +1,6 @@
 @ExternalApiCache_HostAddress = http://localhost:5087
 
-GET {{ExternalApiCache_HostAddress}}/weatherforecast/
+GET {{ExternalApiCache_HostAddress}}/character/
 Accept: application/json
 
 ###
