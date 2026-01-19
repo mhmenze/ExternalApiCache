@@ -52,12 +52,26 @@ Made an assumption that "get a list of records" means get all records.
 - MS SQL Server
 
 ## Step 1 - Create an MS SQL Server Instance
+Make sure MS SQL Server is installed and running.
 
 ## Step 2 - Execute the CreationQueries.sql
 Run the script located at "repo\SQL\CreationQueries.sql" to create the DB, schema and tables.
 
+**Using Terminal (from repository root):**
+
+```bash
+sqlcmd -S localhost\SQLEXPRESS -i "SQL/CreationQueries.sql"
+```
+
 ## Step 3 - Execute the StoredProcedures.sql
 Run the script located at "repo\SQL\StoredProcedures.sql" to create all stored procedures.
+
+**Using Terminal (from repository root):**
+```bash
+sqlcmd -S localhost\SQLEXPRESS -i "SQL/StoredProcedures.sql"
+```
+
+**You may use MS SQL Server Management Studio to Execute these SQL queries too without terminal.**
 
 ## Step 4 - Configure appsettings.json
 Add your connection string to appsettings.json like shown in below example:
@@ -81,7 +95,7 @@ Add your connection string to appsettings.json like shown in below example:
 
 ## Step 5 - Build and Run
 Open terminal in Project root ("repo\ExternalApiCache\ExternalApiCache") and run:
-```
+```bash
 dotnet restore
 dotnet run --launch-profile https
 ```
