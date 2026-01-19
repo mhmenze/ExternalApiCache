@@ -1,6 +1,8 @@
+using System.Text.Json;
 using ExternalApiCache.Models;
 using ExternalApiCache.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace ExternalApiCache.Controllers;
 
@@ -25,22 +27,67 @@ public class CharacterController : ControllerBase
     [HttpGet("{characterId}", Name = "GetCharacterById")]
     public async Task<ActionResult<Character>> GetCharacterById(long characterId)
     {
-        var dbResult = await _localService.GetCharacterFromLocalDbById(characterId);
+        if (characterId <= 0)
+        {
+            return BadRequest("ID must be a positive whole number");
+        }
+        try
+        {
+            var dbResult = await _localService.GetCharacterFromLocalDbById(characterId);
 
-        if (dbResult != null)
-            return Ok(dbResult);
+            if (dbResult != null)
+            {
+                _logger.LogInformation("Character found in Cache DB");
+                return Ok(dbResult);
+            }
 
-        var apiResult = await _apiService.FetchCharacterById(characterId);
+            _logger.LogInformation("Character not in DB, fetching from API");
 
-        await _localService.InsertCharacterToDb(apiResult);
+            var apiResult = await _apiService.FetchCharacterById(characterId);
 
-        return Ok(apiResult);
+            await _localService.InsertCharacterToDb(apiResult);
+
+            return Ok(apiResult);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to fetch character from external API");
+            return StatusCode(503, "External API unavailable");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to serialize API response for character");
+            return StatusCode(502, "Invalid response");
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex, "Database error");
+            return StatusCode(500, "Database error");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while getting character");
+            return StatusCode(500, "An unexpected error occurred");
+        }
     }
 
     [HttpGet("all", Name = "GetAllCharacters")]
     public async Task<ActionResult<IEnumerable<Character>>> GetAllCharacters()
     {
-        var results = await _localService.GetAllCharactersFromlocalDb();
-        return Ok(results);
+        try
+        {
+            var results = await _localService.GetAllCharactersFromLocalDb();
+            return Ok(results);
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex, "Database error");
+            return StatusCode(500, "Database error");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while getting character");
+            return StatusCode(500, "An unexpected error occurred");
+        }
     }
 }

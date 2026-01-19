@@ -34,7 +34,7 @@ public class LocalCacheService
         return character;
     }
 
-    public async Task<List<Character>> GetAllCharactersFromlocalDb()
+    public async Task<List<Character>> GetAllCharactersFromLocalDb()
     {
         var characters = new List<Character>();
         using var connection = new SqlConnection(_connectionString);

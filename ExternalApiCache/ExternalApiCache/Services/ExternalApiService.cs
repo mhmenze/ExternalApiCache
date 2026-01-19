@@ -16,18 +16,12 @@ public class ExternalApiService
     {
         string apiUrl = $"character/{characterId}";
 
-        try
-        {
-            HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
+        HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
+        response.EnsureSuccessStatusCode();
 
-            string jsonData = await response.Content.ReadAsStringAsync();
-            var result = MapApiResultToCharacterModel(jsonData);
-            return result;
-        }
-        catch (Exception)
-        {
-            throw;
-        }
+        string jsonData = await response.Content.ReadAsStringAsync();
+        var result = MapApiResultToCharacterModel(jsonData);
+        return result;
     }
 
     public Character MapApiResultToCharacterModel(string jsonData)
