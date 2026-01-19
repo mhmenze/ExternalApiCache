@@ -1,25 +1,41 @@
-﻿using ExternalApiCache.Models;
+﻿using System.Text.Json;
+using ExternalApiCache.Models;
 
 namespace ExternalApiCache.Services;
 
 public class ExternalApiService
 {
+    private readonly HttpClient _httpClient;
+
+    public ExternalApiService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
     public async Task<Character> FetchCharacterById(long characterId)
     {
-        HttpClient externalApi = new HttpClient();
-        string apiUrl = $"https://rickandmortyapi.com/api/character/{characterId}";
+        string apiUrl = $"character/{characterId}";
 
         try
         {
-            HttpResponseMessage response = await externalApi.GetAsync(apiUrl);
+            HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
 
             string jsonData = await response.Content.ReadAsStringAsync();
+            var result = MapResultToCharacterModel(jsonData);
+            return result;
         }
         catch (Exception)
         {
 
             throw;
         }
-        return new Character();
+    }
+
+    public Character MapResultToCharacterModel(string jsonData)
+    {
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        return JsonSerializer.Deserialize<Character>(jsonData, options)
+                ?? throw new JsonException("Failed to deserialize Character");
     }
 }

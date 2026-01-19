@@ -12,8 +12,8 @@ public sealed class Character
     public CharacterLocation Location { get; set; } = new CharacterLocation();
     public string Image { get; set; } = string.Empty;
     public List<string> Episode { get; set; } = new List<string>();
-    public string CharacterUrl { get; set; } = string.Empty;
-    public string CreatedOn { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string Created { get; set; } = string.Empty;
 }
 
 public sealed class CharacterOrigin

@@ -9,8 +9,12 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
-        builder.Services.AddScoped<ExternalApiService>();
+        // Add services to the container..
+        var baseUrl = builder.Configuration["RickAndMortyApi:BaseUrl"];
+        builder.Services.AddHttpClient<ExternalApiService>(client =>
+        {
+            client.BaseAddress = new Uri(baseUrl!);
+        });
 
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
